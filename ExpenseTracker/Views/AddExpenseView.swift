@@ -64,6 +64,7 @@ struct AddExpenseView: View {
                         selection: $selectedDate,
                         displayedComponents: .date
                     )
+                    .environment(\.locale, Locale(identifier: "ru_RU"))
                 }
                 
                 Section("Примечание (опционально)") {

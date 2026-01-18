@@ -1,8 +1,9 @@
 import SwiftUI
 
 struct CategoryDetailView: View {
-    var viewModel: ExpenseViewModel
     var category: Category
+    var expenses: [Expense]
+    var viewModel: ExpenseViewModel
     
     @State private var selectedPeriod: TimePeriod = .thisMonth
     @State private var startDate = Calendar.current.date(byAdding: .month, value: -1, to: Date())!

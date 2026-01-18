@@ -34,6 +34,7 @@ struct EditExpenseView: View {
             
             Section("Дата") {
                 DatePicker("Дата", selection: $selectedDate, displayedComponents: .date)
+                    .environment(\.locale, Locale(identifier: "ru_RU"))
             }
             
             Section("Примечание") {

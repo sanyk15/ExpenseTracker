@@ -97,21 +97,28 @@ struct ContentView: View {
                 }
             }
             .tabItem {
-                Label("Сегодня", systemImage: "calendar")
+                Label("Расходы", systemImage: "creditcard")
             }
             
-            // Tab 2: Statistics
+            // Tab 2: Incomes
+            IncomeView(viewModel: viewModel)
+                .tabItem {
+                    Label("Доходы", systemImage: "banknote")
+                }
+            
+            // Tab 3: Statistics + Balance (UNIFIED)
             StatsView(viewModel: viewModel)
                 .tabItem {
                     Label("Статистика", systemImage: "chart.bar")
                 }
             
-            // Tab 3: Categories
+            // Tab 4: Categories
             CategoriesView(viewModel: viewModel)
                 .tabItem {
                     Label("Категории", systemImage: "list.bullet")
                 }
         }
+        .preferredColorScheme(.light)
         .sheet(isPresented: $showAddExpense) {
             NavigationStack {
                 AddExpenseView(viewModel: viewModel, isPresented: $showAddExpense)

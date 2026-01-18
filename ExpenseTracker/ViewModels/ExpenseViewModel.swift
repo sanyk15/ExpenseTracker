@@ -7,6 +7,7 @@ class ExpenseViewModel {
     // MARK: - Properties
     var expenses: [Expense] = []
     var categories: [Category] = []
+    var incomes: [Income] = []
     var isLoading = false
     var errorMessage: String?
     
@@ -14,6 +15,7 @@ class ExpenseViewModel {
     init() {
         loadCategories()
         loadExpenses()
+        loadIncomes()
     }
     
     // MARK: - Categories Management
@@ -231,5 +233,61 @@ class ExpenseViewModel {
     func isFreeDay(_ date: Date) -> Bool {
         getExpensesForDate(date).isEmpty
     }
+    
+    // MARK: - Income Management
+    func loadIncomes() {
+        if let saved = UserDefaults.standard.data(forKey: "incomes"),
+           let decoded = try? JSONDecoder().decode([Income].self, from: saved) {
+            self.incomes = decoded
+        }
+    }
 
+    func saveIncomes() {
+        if let encoded = try? JSONEncoder().encode(incomes) {
+            UserDefaults.standard.set(encoded, forKey: "incomes")
+        }
+    }
+
+    func addIncome(_ income: Income) {
+        incomes.append(income)
+        incomes.sort { $0.date > $1.date }
+        saveIncomes()
+    }
+
+    func deleteIncome(_ income: Income) {
+        incomes.removeAll { $0.id == income.id }
+        saveIncomes()
+    }
+
+    func editIncome(_ income: Income, newIncome: Income) {
+        if let index = incomes.firstIndex(where: { $0.id == income.id }) {
+            incomes[index] = newIncome
+            incomes.sort { $0.date > $1.date }
+            saveIncomes()
+        }
+    }
+
+    func getIncomesForDate(_ date: Date) -> [Income] {
+        let calendar = Calendar.current
+        return incomes.filter { calendar.isDate($0.date, inSameDayAs: date) }
+            .sorted { $0.date > $1.date }
+    }
+
+    func getIncomesForMonth(_ date: Date) -> [Income] {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: date)
+        return incomes.filter { income in
+            let incomeComponents = calendar.dateComponents([.year, .month], from: income.date)
+            return incomeComponents.year == components.year &&
+                   incomeComponents.month == components.month
+        }
+    }
+
+    func getIncomesForPeriod(from startDate: Date, to endDate: Date) -> [Income] {
+        incomes.filter { $0.date >= startDate && $0.date <= endDate }
+    }
+
+    func getTotalIncomeForPeriod(_ incomes: [Income]) -> Double {
+        incomes.reduce(0) { $0 + $1.amount }
+    }
 }
