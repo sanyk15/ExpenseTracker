@@ -1,0 +1,64 @@
+import SwiftUI
+
+struct CategoriesView: View {
+    var viewModel: ExpenseViewModel
+    @State private var showAddCategory = false
+    @State private var newCategoryName = ""
+    @State private var newCategoryIcon = "📌"
+    @State private var newCategoryColor = "#CCCCCC"
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(viewModel.categories) { category in
+                    HStack {
+                        Text(category.icon)
+                            .font(.title2)
+                        Text(category.name)
+                        Spacer()
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            viewModel.deleteCategory(category)
+                        } label: {
+                            Label("Удалить", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Категории")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: { showAddCategory = true }) {
+                        Image(systemName: "plus.circle.fill")
+                    }
+                }
+            }
+            .sheet(isPresented: $showAddCategory) {
+                NavigationStack {
+                    Form {
+                        TextField("Название", text: $newCategoryName)
+                        TextField("Эмодзи", text: $newCategoryIcon)
+                    }
+                    .navigationTitle("Новая категория")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Сохранить") {
+                                let newCategory = Category(
+                                    name: newCategoryName,
+                                    color: newCategoryColor,
+                                    icon: newCategoryIcon
+                                )
+                                viewModel.addCategory(newCategory)
+                                newCategoryName = ""
+                                newCategoryIcon = "📌"
+                                showAddCategory = false
+                            }
+                            .disabled(newCategoryName.isEmpty)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
