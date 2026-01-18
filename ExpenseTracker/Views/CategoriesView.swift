@@ -11,11 +11,12 @@ struct CategoriesView: View {
         NavigationStack {
             List {
                 ForEach(viewModel.categories) { category in
-                    HStack {
-                        Text(category.icon)
-                            .font(.title2)
-                        Text(category.name)
-                        Spacer()
+                    NavigationLink(destination: CategoryEditView(viewModel: viewModel, category: category)) {
+                        HStack {
+                            Text(category.icon)
+                                .font(.title2)
+                            Text(category.name)
+                        }
                     }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
@@ -25,6 +26,7 @@ struct CategoriesView: View {
                         }
                     }
                 }
+                .onMove(perform: moveCategory)
             }
             .navigationTitle("Категории")
             .toolbar {
@@ -60,5 +62,10 @@ struct CategoriesView: View {
                 }
             }
         }
+    }
+    
+    private func moveCategory(from source: IndexSet, to destination: Int) {
+        viewModel.categories.move(fromOffsets: source, toOffset: destination)
+        viewModel.saveCategories()
     }
 }

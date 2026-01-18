@@ -3,7 +3,6 @@ import SwiftUI
 struct ContentView: View {
     @State var viewModel = ExpenseViewModel()
     @State var showAddExpense = false
-    @State var showCategories = false
     @State var selectedDate = Date()
     
     var body: some View {
@@ -16,16 +15,18 @@ struct ContentView: View {
                         selection: $selectedDate,
                         displayedComponents: .date
                     )
+                    .environment(\.locale, Locale(identifier: "ru_RU"))
                     .padding()
                     
                     let todayExpenses = viewModel.getExpensesForDate(selectedDate)
                     
                     if todayExpenses.isEmpty {
-                        VStack {
-                            Text("Нет расходов")
-                                .font(.title3)
-                                .foregroundColor(.gray)
-                            Text("за этот день")
+                        VStack(spacing: 16) {
+                            Text("🎉")
+                                .font(.system(size: 60))
+                            Text("Бесплатный день!")
+                                .font(.headline)
+                            Text("Поздравляем! Сегодня без расходов")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
@@ -33,25 +34,28 @@ struct ContentView: View {
                     } else {
                         List {
                             ForEach(todayExpenses) { expense in
-                                HStack {
-                                    Text(expense.category.icon)
-                                        .font(.title2)
-                                    
-                                    VStack(alignment: .leading) {
-                                        Text(expense.category.name)
-                                            .font(.headline)
-                                        if let note = expense.note, !note.isEmpty {
-                                            Text(note)
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
+                                NavigationLink(destination: EditExpenseView(viewModel: viewModel, expense: expense)) {
+                                    HStack {
+                                        Text(expense.category.icon)
+                                            .font(.title2)
+                                        
+                                        VStack(alignment: .leading) {
+                                            Text(expense.category.name)
+                                                .font(.headline)
+                                            if let note = expense.note, !note.isEmpty {
+                                                Text(note)
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                            }
                                         }
+                                        
+                                        Spacer()
+                                        
+                                        Text(expense.formattedAmount)
+                                            .font(.headline)
+                                            .foregroundColor(.red)
                                     }
-                                    
-                                    Spacer()
-                                    
-                                    Text(expense.formattedAmount)
-                                        .font(.headline)
-                                        .foregroundColor(.red)
+                                    .foregroundColor(.primary)
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
@@ -109,7 +113,9 @@ struct ContentView: View {
                 }
         }
         .sheet(isPresented: $showAddExpense) {
-            AddExpenseView(viewModel: viewModel, isPresented: $showAddExpense)
+            NavigationStack {
+                AddExpenseView(viewModel: viewModel, isPresented: $showAddExpense)
+            }
         }
     }
 }

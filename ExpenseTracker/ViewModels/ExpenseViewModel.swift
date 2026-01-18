@@ -73,10 +73,19 @@ class ExpenseViewModel {
         saveExpenses()
     }
     
+    // MARK: - Expenses Management (Updated)
     func editExpense(_ expense: Expense, newExpense: Expense) {
+        print("🔄 Начинаем редактировать расход")
+        print("📌 Старое значение: \(expense.amount)")
+        print("📌 Новое значение: \(newExpense.amount)")
+        
         if let index = expenses.firstIndex(where: { $0.id == expense.id }) {
             expenses[index] = newExpense
+            expenses.sort { $0.date > $1.date }
             saveExpenses()
+            print("✅ Расход успешно обновлён")
+        } else {
+            print("❌ Расход не найден!")
         }
     }
     
@@ -146,9 +155,16 @@ class ExpenseViewModel {
         return (currentTotal, previousTotal, change)
     }
     
-    // MARK: - Helpers
+    // MARK: - Helpers (Updated)
     func copyExpensesToClipboard(_ expenses: [Expense]) {
-        var text = "Расходы за день:\n\n"
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "ru_RU")
+        dateFormatter.dateFormat = "dd.MM.yyyy"
+        let currentDate = dateFormatter.string(from: Date())
+        
+        var text = "Расходы за день\n"
+        text += "Дата отчета: \(currentDate)\n\n"
+        
         for expense in expenses {
             text += "\(expense.category.icon) \(expense.category.name): \(expense.formattedAmount)"
             if let note = expense.note, !note.isEmpty {
@@ -176,4 +192,44 @@ class ExpenseViewModel {
             return nil
         }
     }
+    
+    // MARK: - Category Management (Updated)
+    func sortCategories() {
+        categories.sort { $0.name < $1.name }
+        saveCategories()
+    }
+
+    func editCategory(_ category: Category, newCategory: Category) {
+        if let index = categories.firstIndex(where: { $0.id == category.id }) {
+            categories[index] = newCategory
+            // Обнови категорию во всех тратах
+            expenses = expenses.map { expense in
+                if expense.category.id == category.id {
+                    var updatedExpense = expense
+                    updatedExpense.category = newCategory
+                    return updatedExpense
+                }
+                return expense
+            }
+            saveCategories()
+            saveExpenses()
+        }
+    }
+
+    // MARK: - Statistics (New)
+    func getExpensesForCategoryInPeriod(category: Category, from startDate: Date, to endDate: Date) -> [Expense] {
+        getExpensesForPeriod(from: startDate, to: endDate)
+            .filter { $0.category.id == category.id }
+    }
+
+    func getCategoryExpensesBreakdown(category: Category) -> [Expense] {
+        expenses.filter { $0.category.id == category.id }
+            .sorted { $0.date > $1.date }
+    }
+
+    // Бесплатный день
+    func isFreeDay(_ date: Date) -> Bool {
+        getExpensesForDate(date).isEmpty
+    }
+
 }

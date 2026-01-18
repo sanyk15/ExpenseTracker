@@ -63,46 +63,49 @@ struct StatsView: View {
                                 .padding(.horizontal)
                             
                             ForEach(categoryStats, id: \.category.id) { stat in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(stat.category.icon)
-                                            .font(.title3)
-                                        Text(stat.category.name)
-                                            .font(.subheadline)
-                                        Spacer()
-                                        Text(String(format: "%.2f ₽", stat.total))
-                                            .font(.subheadline)
-                                            .fontWeight(.semibold)
-                                    }
-                                    
-                                    // Bar with percentage
-                                    GeometryReader { geometry in
-                                        HStack(spacing: 0) {
-                                            // Bar
-                                            RoundedRectangle(cornerRadius: 4)
-                                                .fill(Color.blue.opacity(0.6))
-                                                .frame(width: geometry.size.width * (stat.percentage / 100))
-                                            
-                                            Spacer()
-                                        }
-                                        .frame(height: 24)
-                                        .background(Color.gray.opacity(0.1))
-                                        .cornerRadius(4)
-                                        
-                                        // Percentage text in the middle
+                                NavigationLink(destination: CategoryDetailView(viewModel: viewModel, category: stat.category)) {
+                                    VStack(alignment: .leading, spacing: 4) {
                                         HStack {
+                                            Text(stat.category.icon)
+                                                .font(.title3)
+                                            Text(stat.category.name)
+                                                .font(.subheadline)
                                             Spacer()
-                                            Text(String(format: "%.1f%%", stat.percentage))
-                                                .font(.caption2)
+                                            Text(String(format: "%.2f ₽", stat.total))
+                                                .font(.subheadline)
                                                 .fontWeight(.semibold)
-                                                .foregroundColor(.black)
-                                            Spacer()
+                                        }
+                                        
+                                        // Bar with percentage
+                                        GeometryReader { geometry in
+                                            HStack(spacing: 0) {
+                                                // Bar
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.blue.opacity(0.6))
+                                                    .frame(width: geometry.size.width * (stat.percentage / 100))
+                                                
+                                                Spacer()
+                                            }
+                                            .frame(height: 24)
+                                            .background(Color.gray.opacity(0.1))
+                                            .cornerRadius(4)
+                                            
+                                            // Percentage text in the middle
+                                            HStack {
+                                                Spacer()
+                                                Text(String(format: "%.1f%%", stat.percentage))
+                                                    .font(.caption2)
+                                                    .fontWeight(.semibold)
+                                                    .foregroundColor(.black)
+                                                Spacer()
+                                            }
+                                            .frame(height: 24)
                                         }
                                         .frame(height: 24)
                                     }
-                                    .frame(height: 24)
+                                    .padding(.horizontal)
+                                    .foregroundColor(.primary)
                                 }
-                                .padding(.horizontal)
                             }
                         }
                     }
