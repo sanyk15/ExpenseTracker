@@ -75,6 +75,11 @@ struct IncomeView: View {
             }
             .navigationTitle("Доходы")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                            NavigationLink(destination: SettingsView()) {
+                                Image(systemName: "gearshape.fill")
+                            }
+                        }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { showAddIncome = true }) {
                         Image(systemName: "plus.circle.fill")

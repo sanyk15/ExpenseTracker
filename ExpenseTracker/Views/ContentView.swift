@@ -4,7 +4,8 @@ struct ContentView: View {
     @State var viewModel = ExpenseViewModel()
     @State var showAddExpense = false
     @State var selectedDate = Date()
-    
+    @State private var isDarkMode = false
+
     var body: some View {
         TabView {
             // Tab 1: Today's expenses
@@ -89,6 +90,11 @@ struct ContentView: View {
                 }
                 .navigationTitle("Расходы")
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                                NavigationLink(destination: SettingsView()) {
+                                    Image(systemName: "gearshape.fill")
+                                }
+                            }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(action: { showAddExpense = true }) {
                             Image(systemName: "plus.circle.fill")
@@ -118,11 +124,21 @@ struct ContentView: View {
                     Label("Категории", systemImage: "list.bullet")
                 }
         }
-        .preferredColorScheme(.light)
-        .sheet(isPresented: $showAddExpense) {
-            NavigationStack {
-                AddExpenseView(viewModel: viewModel, isPresented: $showAddExpense)
-            }
-        }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
+                .sheet(isPresented: $showAddExpense) {
+                    NavigationStack {
+                        AddExpenseView(viewModel: viewModel, isPresented: $showAddExpense)
+                    }
+                }
+                .onAppear {
+                    isDarkMode = UserDefaults.standard.bool(forKey: "isDarkMode")
+                    NotificationCenter.default.addObserver(
+                        forName: NSNotification.Name("themeChanged"),
+                        object: nil,
+                        queue: .main
+                    ) { _ in
+                        isDarkMode = UserDefaults.standard.bool(forKey: "isDarkMode")
+                    }
+                }
     }
 }

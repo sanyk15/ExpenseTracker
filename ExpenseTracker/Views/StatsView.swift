@@ -59,6 +59,13 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("Статистика")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                            NavigationLink(destination: SettingsView()) {
+                                Image(systemName: "gearshape.fill")
+                            }
+                        }
+            }
             .preferredColorScheme(.light)
         }
     }
