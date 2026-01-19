@@ -164,9 +164,8 @@ class ExpenseViewModel {
         dateFormatter.dateFormat = "dd.MM.yyyy"
         let currentDate = dateFormatter.string(from: Date())
         
-        var text = "Расходы за день\n"
-        text += "Дата отчета: \(currentDate)\n\n"
-        
+        var text = "Расходы за \(currentDate)\n\n"
+
         for expense in expenses {
             text += "\(expense.category.icon) \(expense.category.name): \(expense.formattedAmount)"
             if let note = expense.note, !note.isEmpty {

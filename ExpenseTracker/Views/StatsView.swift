@@ -2,8 +2,8 @@ import SwiftUI
 
 struct StatsView: View {
     var viewModel: ExpenseViewModel
-    @State private var selectedTab: StatsTab = .expenses
-    @State private var selectedPeriod: TimePeriod = .thisMonth
+    @State private var selectedTab = StatsTab.expenses
+    @State private var selectedPeriod = TimePeriod.thisMonth
     @State private var startDate = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
     @State private var endDate = Date()
     
@@ -24,10 +24,10 @@ struct StatsView: View {
             VStack {
                 // Period picker
                 Picker("Период", selection: $selectedPeriod) {
-                    Text("На этой неделе").tag(TimePeriod.thisWeek)
-                    Text("В этом месяце").tag(TimePeriod.thisMonth)
-                    Text("В этом году").tag(TimePeriod.thisYear)
-                    Text("Пользовательский").tag(TimePeriod.custom)
+                    Text("Неделя").tag(TimePeriod.thisWeek)
+                    Text("Месяц").tag(TimePeriod.thisMonth)
+                    Text("Год").tag(TimePeriod.thisYear)
+                    Text("Свой период").tag(TimePeriod.custom)
                 }
                 .pickerStyle(.segmented)
                 .padding()
@@ -43,9 +43,9 @@ struct StatsView: View {
                 }
                 
                 // Tabs
-                Picker("Вид", selection: $selectedTab) {
+                Picker("", selection: $selectedTab) {
                     Text("Расходы").tag(StatsTab.expenses)
-                    Text("Баланс").tag(StatsTab.balance)
+                    Text("Доходы").tag(StatsTab.balance)
                 }
                 .pickerStyle(.segmented)
                 .padding()
@@ -59,13 +59,6 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("Статистика")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                            NavigationLink(destination: SettingsView()) {
-                                Image(systemName: "gearshape.fill")
-                            }
-                        }
-            }
             .preferredColorScheme(.light)
         }
     }
@@ -80,7 +73,7 @@ struct ExpensesStatsContent: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            let expenses = expensesForPeriod()
+            let expenses = expensesForPeriod
             let totalExpense = viewModel.getTotalForPeriod(expenses)
             
             // Total card
@@ -108,12 +101,18 @@ struct ExpensesStatsContent: View {
                     .padding(.horizontal)
                 
                 let grouped = Dictionary(grouping: expenses, by: { $0.category.id })
-                ForEach(grouped.sorted(by: { $0.value.reduce(0) { $0 + $1.amount } > $1.value.reduce(0) { $0 + $1.amount } }), id: \.key) { _, categoryExpenses in
+                let sortedCategories = grouped.sorted {
+                    let total1 = viewModel.getTotalForPeriod($0.value)
+                    let total2 = viewModel.getTotalForPeriod($1.value)
+                    return total1 > total2
+                }
+                
+                ForEach(sortedCategories, id: \.key) { _, categoryExpenses in
                     if let category = categoryExpenses.first?.category {
                         let categoryTotal = viewModel.getTotalForPeriod(categoryExpenses)
                         let percentage = (categoryTotal / totalExpense) * 100
                         
-                        NavigationLink(destination: CategoryDetailView(category: category, expenses: categoryExpenses.sorted(by: { $0.date > $1.date }), viewModel: viewModel)) {
+                        NavigationLink(destination: CategoryDetailView(category: category, expenses: categoryExpenses, viewModel: viewModel)) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {
@@ -123,7 +122,6 @@ struct ExpensesStatsContent: View {
                                             .font(.body)
                                     }
                                     
-                                    // Progress bar
                                     GeometryReader { geometry in
                                         ZStack(alignment: .leading) {
                                             RoundedRectangle(cornerRadius: 4)
@@ -158,29 +156,25 @@ struct ExpensesStatsContent: View {
         }
     }
     
-    private func expensesForPeriod() -> [Expense] {
+    var expensesForPeriod: [Expense] {
         let calendar = Calendar.current
-        
         switch period {
         case .thisWeek:
             let start = calendar.date(byAdding: .day, value: -7, to: Date())!
             return viewModel.getExpensesForPeriod(from: start, to: Date())
-            
         case .thisMonth:
             let start = calendar.date(byAdding: .month, value: -1, to: Date())!
             return viewModel.getExpensesForPeriod(from: start, to: Date())
-            
         case .thisYear:
             let start = calendar.date(byAdding: .year, value: -1, to: Date())!
             return viewModel.getExpensesForPeriod(from: start, to: Date())
-            
         case .custom:
             return viewModel.getExpensesForPeriod(from: startDate, to: endDate)
         }
     }
 }
 
-// MARK: - Balance Stats Content
+// MARK: - Balance Stats Content (Доходы)
 struct BalanceStatsContent: View {
     var viewModel: ExpenseViewModel
     var period: StatsView.TimePeriod
@@ -189,199 +183,239 @@ struct BalanceStatsContent: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            let incomes = incomesForPeriod()
-            let expenses = expensesForPeriod()
+            let incomes = incomesForPeriod
             let totalIncome = viewModel.getTotalIncomeForPeriod(incomes)
-            let totalExpense = viewModel.getTotalForPeriod(expenses)
-            let balance = totalIncome - totalExpense
             
-            // Summary cards
-            VStack(spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Доходы")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(String(format: "%.2f ₽", totalIncome))
-                            .font(.headline)
-                            .foregroundColor(.green)
-                    }
-                    Spacer()
+            // Total income card
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Всего доходов")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Text(String(format: "%.2f ₽", totalIncome))
+                        .font(.title2)
+                        .foregroundColor(.green)
                 }
-                .padding()
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(10)
-                
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Расходы")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(String(format: "%.2f ₽", totalExpense))
-                            .font(.headline)
-                            .foregroundColor(.red)
-                    }
-                    Spacer()
-                }
-                .padding()
-                .background(Color.red.opacity(0.1))
-                .cornerRadius(10)
-                
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Баланс")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text(String(format: "%.2f ₽", balance))
-                            .font(.headline)
-                            .foregroundColor(balance >= 0 ? .green : .red)
-                    }
-                    Spacer()
-                }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
+                Spacer()
             }
             .padding()
+            .background(Color.green.opacity(0.1))
+            .cornerRadius(10)
+            .padding()
             
-            // Pie chart
-            if totalIncome > 0 && totalExpense > 0 {
-                Text("Соотношение доходов и расходов")
+            // Incomes by source
+            if !incomes.isEmpty {
+                Text("Источники доходов")
                     .font(.headline)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
                 
-                VStack(spacing: 20) {
-                    PieChartView(
-                        incomeAmount: totalIncome,
-                        expenseAmount: totalExpense
-                    )
-                    .frame(height: 250)
-                    
-                    HStack(spacing: 20) {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(Color.green)
-                                .frame(width: 12, height: 12)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Доходы")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                Text(String(format: "%.1f%%", (totalIncome / (totalIncome + totalExpense)) * 100))
-                                    .font(.body)
-                                    .fontWeight(.semibold)
-                            }
+                ScrollView {
+                    VStack(spacing: 12) {
+                        let grouped = Dictionary(grouping: incomes, by: { $0.note ?? "Без категории" })
+                        let sortedSources = grouped.sorted {
+                            let total1 = $0.value.reduce(0) { $0 + $1.amount }
+                            let total2 = $1.value.reduce(0) { $0 + $1.amount }
+                            return total1 > total2
                         }
                         
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(Color.red)
-                                .frame(width: 12, height: 12)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Расходы")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                Text(String(format: "%.1f%%", (totalExpense / (totalIncome + totalExpense)) * 100))
-                                    .font(.body)
-                                    .fontWeight(.semibold)
-                            }
+                        ForEach(sortedSources, id: \.key) { source, sourceIncomes in
+                            IncomeSourceView(
+                                source: source,
+                                sourceIncomes: sourceIncomes,
+                                totalIncome: totalIncome
+                            )
                         }
-                        
-                        Spacer()
                     }
-                    .padding()
                 }
             }
         }
     }
     
-    private func incomesForPeriod() -> [Income] {
+    var incomesForPeriod: [Income] {
         let calendar = Calendar.current
-        
         switch period {
         case .thisWeek:
             let start = calendar.date(byAdding: .day, value: -7, to: Date())!
             return viewModel.getIncomesForPeriod(from: start, to: Date())
-            
         case .thisMonth:
             let start = calendar.date(byAdding: .month, value: -1, to: Date())!
             return viewModel.getIncomesForPeriod(from: start, to: Date())
-            
         case .thisYear:
             let start = calendar.date(byAdding: .year, value: -1, to: Date())!
             return viewModel.getIncomesForPeriod(from: start, to: Date())
-            
         case .custom:
             return viewModel.getIncomesForPeriod(from: startDate, to: endDate)
         }
     }
+}
+
+// MARK: - Incomes List View
+struct IncomesListView: View {
+    let incomes: [Income]
+    let totalIncome: Double
     
-    private func expensesForPeriod() -> [Expense] {
-        let calendar = Calendar.current
+    var body: some View {
+        let grouped = Dictionary(grouping: incomes, by: { $0.note ?? "Без категории" })
+        let sortedSources = grouped.sorted {
+            let total1 = $0.value.reduce(0) { $0 + $1.amount }
+            let total2 = $1.value.reduce(0) { $0 + $1.amount }
+            return total1 > total2
+        }
         
-        switch period {
-        case .thisWeek:
-            let start = calendar.date(byAdding: .day, value: -7, to: Date())!
-            return viewModel.getExpensesForPeriod(from: start, to: Date())
-            
-        case .thisMonth:
-            let start = calendar.date(byAdding: .month, value: -1, to: Date())!
-            return viewModel.getExpensesForPeriod(from: start, to: Date())
-            
-        case .thisYear:
-            let start = calendar.date(byAdding: .year, value: -1, to: Date())!
-            return viewModel.getExpensesForPeriod(from: start, to: Date())
-            
-        case .custom:
-            return viewModel.getExpensesForPeriod(from: startDate, to: endDate)
+        VStack(spacing: 12) {  // ← Убрал "return"
+            ForEach(sortedSources, id: \.key) { source, sourceIncomes in
+                IncomeSourceView(
+                    source: source,
+                    sourceIncomes: sourceIncomes,
+                    totalIncome: totalIncome
+                )
+            }
         }
     }
 }
 
-// MARK: - Pie Chart Component
-struct PieChartView: View {
-    var incomeAmount: Double
-    var expenseAmount: Double
+// MARK: - Income Source View
+struct IncomeSourceView: View {
+    let source: String
+    let sourceIncomes: [Income]
+    let totalIncome: Double
     
     var body: some View {
-        Canvas { context, size in
-            let total = incomeAmount + expenseAmount
-            let incomePercentage = incomeAmount / total
+        let sourceTotal = sourceIncomes.reduce(0) { $0 + $1.amount }
+        let percentage = (sourceTotal / totalIncome) * 100
+        let sortedIncomes = sourceIncomes.sorted { $0.date > $1.date }
+        
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(source)
+                        .font(.body)
+                        .fontWeight(.medium)
+                    
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.gray.opacity(0.2))
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.green.opacity(0.7))
+                                .frame(width: geometry.size.width * CGFloat(percentage / 100))
+                        }
+                    }
+                    .frame(height: 8)
+                }
+                
+                VStack(alignment: .trailing) {
+                    Text(String(format: "%.2f ₽", sourceTotal))
+                        .font(.body)
+                        .fontWeight(.semibold)
+                    Text(String(format: "%.1f%%", percentage))
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
             
-            let centerX = size.width / 2
-            let centerY = size.height / 2
-            let radius: CGFloat = 80
+            Divider()
             
-            // Green slice (income)
-            var path = Path()
-            path.move(to: CGPoint(x: centerX, y: centerY))
-            path.addArc(
-                center: CGPoint(x: centerX, y: centerY),
-                radius: radius,
-                startAngle: .degrees(0),
-                endAngle: .degrees(incomePercentage * 360),
-                clockwise: false
-            )
-            path.closeSubpath()
-            context.fill(path, with: .color(.green))
-            
-            // Red slice (expense)
-            path = Path()
-            path.move(to: CGPoint(x: centerX, y: centerY))
-            path.addArc(
-                center: CGPoint(x: centerX, y: centerY),
-                radius: radius,
-                startAngle: .degrees(incomePercentage * 360),
-                endAngle: .degrees(360),
-                clockwise: false
-            )
-            path.closeSubpath()
-            context.fill(path, with: .color(.red))
-            
-            // Center circle (for donut effect)
-            var circlePath = Path()
-            circlePath.addEllipse(in: CGRect(x: centerX - 40, y: centerY - 40, width: 80, height: 80))
-            context.fill(circlePath, with: .color(.white))
+            // Список доходов
+            VStack(spacing: 8) {
+                ForEach(sortedIncomes, id: \.id) { income in
+                    IncomeItemRow(income: income)
+                }
+            }
         }
+        .padding()
+        .background(Color.gray.opacity(0.05))
+        .cornerRadius(8)
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Income Item Row
+struct IncomeItemRow: View {
+    let income: Income
+    
+    var formattedDate: String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd.MM.yyyy HH:mm"
+        dateFormatter.locale = Locale(identifier: "ru_RU")
+        return dateFormatter.string(from: income.date)
+    }
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(income.note ?? "Доход")
+                    .font(.body)
+                
+                Text(formattedDate)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Text(String(format: "%.2f ₽", income.amount))
+                .font(.body)
+                .fontWeight(.semibold)
+                .foregroundColor(.green)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color.gray.opacity(0.05))
+        .cornerRadius(6)
+    }
+}
+
+
+// MARK: - Bar Chart Component
+struct BarChart: View {
+    let data: [(String, Double)]
+    let color: Color
+    
+    var maxValue: Double {
+        data.map { $0.1 }.max() ?? 1
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollViewReader { scrollProxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        ForEach(data.indices, id: \.self) { index in
+                            let month = data[index].0
+                            let value = data[index].1
+                            VStack(spacing: 4) {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(color.opacity(0.7))
+                                    .frame(width: 30, height: CGFloat(value / maxValue) * 150)
+                                
+                                Text(month)
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                            }
+                            .id(index)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .onAppear {
+                    scrollProxy.scrollTo(data.count - 1, anchor: .trailing)
+                }
+            }
+            
+            HStack {
+                Text("Макс: \(String(format: "%.0f ₽", maxValue))")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                Spacer()
+            }
+            .padding(.top, 8)
+        }
+        .padding()
+        .background(Color.gray.opacity(0.05))
+        .cornerRadius(8)
     }
 }
