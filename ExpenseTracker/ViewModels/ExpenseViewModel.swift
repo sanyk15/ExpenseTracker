@@ -158,16 +158,16 @@ class ExpenseViewModel {
     }
     
     // MARK: - Helpers (Updated)
-    func copyExpensesToClipboard(_ expenses: [Expense]) {
+    func copyExpensesToClipboard(expenses: [Expense], reportDate: Date) {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "ru_RU")
         dateFormatter.dateFormat = "dd.MM.yyyy"
-        let currentDate = dateFormatter.string(from: Date())
+        let reportDateString = dateFormatter.string(from: reportDate)
         
-        var text = "Расходы за \(currentDate)\n\n"
-
+        var text = "Расходы за \(reportDateString)\n"
+        
         for expense in expenses {
-            text += "\(expense.category.icon) \(expense.category.name): \(expense.formattedAmount)"
+            text += "\(expense.category.icon) \(expense.category.name): \(expense.formattedAmount)\n"
             if let note = expense.note, !note.isEmpty {
                 text += " (\(note))"
             }
@@ -177,6 +177,7 @@ class ExpenseViewModel {
         
         UIPasteboard.general.string = text
     }
+
     
     // MARK: - Export & Import Data
     func exportDataToJSON() -> Data? {

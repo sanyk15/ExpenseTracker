@@ -118,15 +118,19 @@ struct CategoryDetailView: View {
         
         switch selectedPeriod {
         case .thisWeek:
-            let start = calendar.date(byAdding: .day, value: -7, to: Date())!
+            let start = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
             return viewModel.getExpensesForCategoryInPeriod(category: category, from: start, to: Date())
             
         case .thisMonth:
-            let start = calendar.date(byAdding: .month, value: -1, to: Date())!
+            let components = calendar.dateComponents([.year, .month], from: Date())
+            let start = calendar.date(from: components) ?? Date()
             return viewModel.getExpensesForCategoryInPeriod(category: category, from: start, to: Date())
             
         case .thisYear:
-            let start = calendar.date(byAdding: .year, value: -1, to: Date())!
+            var components = calendar.dateComponents([.year], from: Date())
+            components.month = 1
+            components.day = 1
+            let start = calendar.date(from: components) ?? Date()
             return viewModel.getExpensesForCategoryInPeriod(category: category, from: start, to: Date())
             
         case .custom:

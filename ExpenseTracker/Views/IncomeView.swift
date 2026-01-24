@@ -89,7 +89,7 @@ struct IncomeView: View {
         }
         .sheet(isPresented: $showAddIncome) {
             NavigationStack {
-                AddIncomeView(viewModel: viewModel, isPresented: $showAddIncome)
+                AddIncomeView(viewModel: viewModel, isPresented: $showAddIncome, selectedDate: $selectedDate)
             }
         }
     }

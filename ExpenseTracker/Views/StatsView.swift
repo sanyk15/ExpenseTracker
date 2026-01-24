@@ -160,14 +160,24 @@ struct ExpensesStatsContent: View {
         let calendar = Calendar.current
         switch period {
         case .thisWeek:
-            let start = calendar.date(byAdding: .day, value: -7, to: Date())!
+            // От начала текущей недели до сегодня
+            let start = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
             return viewModel.getExpensesForPeriod(from: start, to: Date())
+            
         case .thisMonth:
-            let start = calendar.date(byAdding: .month, value: -1, to: Date())!
+            // От 1-го числа текущего месяца до сегодня
+            let components = calendar.dateComponents([.year, .month], from: Date())
+            let start = calendar.date(from: components) ?? Date()
             return viewModel.getExpensesForPeriod(from: start, to: Date())
+            
         case .thisYear:
-            let start = calendar.date(byAdding: .year, value: -1, to: Date())!
+            // От 1-го января текущего года до сегодня
+            var components = calendar.dateComponents([.year], from: Date())
+            components.month = 1
+            components.day = 1
+            let start = calendar.date(from: components) ?? Date()
             return viewModel.getExpensesForPeriod(from: start, to: Date())
+            
         case .custom:
             return viewModel.getExpensesForPeriod(from: startDate, to: endDate)
         }
@@ -236,14 +246,21 @@ struct BalanceStatsContent: View {
         let calendar = Calendar.current
         switch period {
         case .thisWeek:
-            let start = calendar.date(byAdding: .day, value: -7, to: Date())!
+            let start = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
             return viewModel.getIncomesForPeriod(from: start, to: Date())
+            
         case .thisMonth:
-            let start = calendar.date(byAdding: .month, value: -1, to: Date())!
+            let components = calendar.dateComponents([.year, .month], from: Date())
+            let start = calendar.date(from: components) ?? Date()
             return viewModel.getIncomesForPeriod(from: start, to: Date())
+            
         case .thisYear:
-            let start = calendar.date(byAdding: .year, value: -1, to: Date())!
+            var components = calendar.dateComponents([.year], from: Date())
+            components.month = 1
+            components.day = 1
+            let start = calendar.date(from: components) ?? Date()
             return viewModel.getIncomesForPeriod(from: start, to: Date())
+            
         case .custom:
             return viewModel.getIncomesForPeriod(from: startDate, to: endDate)
         }
@@ -338,7 +355,7 @@ struct IncomeItemRow: View {
     
     var formattedDate: String {
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd.MM.yyyy HH:mm"
+        dateFormatter.dateFormat = "dd.MM.yyyy"
         dateFormatter.locale = Locale(identifier: "ru_RU")
         return dateFormatter.string(from: income.date)
     }

@@ -79,7 +79,7 @@ struct ContentView: View {
                         }
                         
                         Button(action: {
-                            viewModel.copyExpensesToClipboard(todayExpenses)
+                            viewModel.copyExpensesToClipboard(expenses: todayExpenses, reportDate: selectedDate)
                         }) {
                             Label("Копировать список", systemImage: "doc.on.doc")
                                 .frame(maxWidth: .infinity)
@@ -127,7 +127,7 @@ struct ContentView: View {
         .preferredColorScheme(isDarkMode ? .dark : .light)
                 .sheet(isPresented: $showAddExpense) {
                     NavigationStack {
-                        AddExpenseView(viewModel: viewModel, isPresented: $showAddExpense)
+                        AddExpenseView(viewModel: viewModel, isPresented: $showAddExpense, selectedDate: $selectedDate)
                     }
                 }
                 .onAppear {

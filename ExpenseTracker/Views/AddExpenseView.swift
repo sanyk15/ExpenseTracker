@@ -3,10 +3,10 @@ import SwiftUI
 struct AddExpenseView: View {
     var viewModel: ExpenseViewModel
     @Binding var isPresented: Bool
+    @Binding var selectedDate: Date
     
     @State private var amount = ""
     @State private var selectedCategory: Category?
-    @State private var selectedDate = Date()
     @State private var note = ""
     
     var body: some View {
