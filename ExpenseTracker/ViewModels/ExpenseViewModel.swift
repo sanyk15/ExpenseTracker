@@ -290,4 +290,265 @@ class ExpenseViewModel {
     func getTotalIncomeForPeriod(_ incomes: [Income]) -> Double {
         incomes.reduce(0) { $0 + $1.amount }
     }
+    
+    // MARK: - Export / Import Data
+    func exportData() -> URL? {
+        // Конвертируем в простые структуры
+        let expensesBackup = expenses.map { expense in
+            ExpenseBackup(
+                id: expense.id.uuidString,
+                amount: expense.amount,
+                categoryId: expense.category.id.uuidString,
+                date: expense.date,
+                note: expense.note
+            )
+        }
+        
+        let incomesBackup = incomes.map { income in
+            IncomeBackup(
+                id: income.id,
+                amount: income.amount,
+                date: income.date,
+                note: income.note
+            )
+        }
+        
+        let categoriesBackup = categories.map { category in
+            CategoryBackup(
+                id: category.id.uuidString,
+                name: category.name,
+                color: category.color,
+                icon: category.icon
+            )
+        }
+        
+        let backup = BackupData(
+            version: "1.0",
+            exportDate: Date(),
+            expenses: expensesBackup,
+            incomes: incomesBackup,
+            categories: categoriesBackup
+        )
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            encoder.dateEncodingStrategy = .iso8601
+            
+            let jsonData = try encoder.encode(backup)
+            
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm"
+            let dateString = dateFormatter.string(from: Date())
+            let fileName = "ExpenseTracker_\(dateString).json"
+            
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+            try jsonData.write(to: tempURL)
+            
+            return tempURL
+        } catch {
+            print("Export error: \(error)")
+            return nil
+        }
+    }
+
+    func importData(from url: URL) -> Bool {
+        // Явный вывод в консоль через NSLog (работает всегда)
+        NSLog("🟢 СТАРТ ИМПОРТА")
+        NSLog("📁 URL: \(url.path)")
+        
+        // Получаем доступ к файлу (важно для iOS)
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        
+        do {
+            // Проверяем существование файла
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                NSLog("❌ Файл не существует по пути: \(url.path)")
+                return false
+            }
+            
+            NSLog("✅ Файл найден")
+            
+            // Читаем данные
+            let jsonData = try Data(contentsOf: url)
+            NSLog("✅ Файл прочитан, размер: \(jsonData.count) байт")
+            
+            // Выводим первые 200 символов JSON
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                let preview = String(jsonString.prefix(200))
+                NSLog("📄 JSON preview: \(preview)...")
+            }
+            
+            // Декодируем
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            
+            let backup = try decoder.decode(BackupData.self, from: jsonData)
+            NSLog("✅ JSON декодирован!")
+            NSLog("📊 Категорий: \(backup.categories.count)")
+            NSLog("📊 Расходов: \(backup.expenses.count)")
+            NSLog("📊 Доходов: \(backup.incomes.count)")
+            
+            // Импорт категорий
+            var importedCategories: [Category] = []
+            for catBackup in backup.categories {
+                guard let id = UUID(uuidString: catBackup.id) else {
+                    NSLog("⚠️ Пропуск категории с неверным ID: \(catBackup.id)")
+                    continue
+                }
+                var category = Category(name: catBackup.name, color: catBackup.color, icon: catBackup.icon)
+                category.id = id
+                importedCategories.append(category)
+            }
+            self.categories = importedCategories
+            saveCategories()
+            NSLog("✅ Категории сохранены: \(importedCategories.count)")
+            
+            // Импорт расходов
+            var importedExpenses: [Expense] = []
+            for expBackup in backup.expenses {
+                guard let id = UUID(uuidString: expBackup.id),
+                      let categoryId = UUID(uuidString: expBackup.categoryId),
+                      let category = categories.first(where: { $0.id == categoryId }) else {
+                    NSLog("⚠️ Пропуск расхода")
+                    continue
+                }
+                
+                var expense = Expense(
+                    amount: expBackup.amount,
+                    category: category,
+                    date: expBackup.date,
+                    note: expBackup.note
+                )
+                expense.id = id
+                importedExpenses.append(expense)
+            }
+            self.expenses = importedExpenses
+            saveExpenses()
+            NSLog("✅ Расходы сохранены: \(importedExpenses.count)")
+            
+            // Импорт доходов
+            var importedIncomes: [Income] = []
+            for incBackup in backup.incomes {
+                var income = Income(
+                    amount: incBackup.amount,
+                    date: incBackup.date,
+                    note: incBackup.note
+                )
+                income.id = incBackup.id
+                importedIncomes.append(income)
+            }
+            self.incomes = importedIncomes
+            saveIncomes()
+            NSLog("✅ Доходы сохранены: \(importedIncomes.count)")
+            
+            NSLog("🎉 ИМПОРТ ЗАВЕРШЁН УСПЕШНО!")
+            return true
+            
+        } catch let error as DecodingError {
+            NSLog("❌ ОШИБКА ДЕКОДИРОВАНИЯ:")
+            switch error {
+            case .keyNotFound(let key, let context):
+                NSLog("   Ключ '\(key.stringValue)' не найден")
+                NSLog("   Путь: \(context.codingPath)")
+                NSLog("   Описание: \(context.debugDescription)")
+            case .typeMismatch(let type, let context):
+                NSLog("   Несоответствие типа: \(type)")
+                NSLog("   Путь: \(context.codingPath)")
+                NSLog("   Описание: \(context.debugDescription)")
+            case .valueNotFound(let type, let context):
+                NSLog("   Значение не найдено: \(type)")
+                NSLog("   Путь: \(context.codingPath)")
+            case .dataCorrupted(let context):
+                NSLog("   Данные повреждены")
+                NSLog("   Описание: \(context.debugDescription)")
+            @unknown default:
+                NSLog("   Неизвестная ошибка декодирования")
+            }
+            return false
+            
+        } catch {
+            NSLog("❌ ОБЩАЯ ОШИБКА: \(error.localizedDescription)")
+            NSLog("   Детали: \(error)")
+            return false
+        }
+    }
+}
+
+// Модель для экспорта
+struct BackupData: Codable {
+    let version: String
+    let exportDate: Date
+    let expenses: [ExpenseBackup]
+    let incomes: [IncomeBackup]
+    let categories: [CategoryBackup]
+}
+
+struct ExpenseBackup: Codable {
+    let id: String
+    let amount: Double
+    let categoryId: String
+    let date: Date
+    let note: String?
+    
+    // Добавляем custom декодирование
+    enum CodingKeys: String, CodingKey {
+        case id, amount, categoryId, date, note
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        amount = try container.decode(Double.self, forKey: .amount)
+        categoryId = try container.decode(String.self, forKey: .categoryId)
+        date = try container.decode(Date.self, forKey: .date)
+        note = try container.decodeIfPresent(String.self, forKey: .note)
+    }
+    
+    // Оставляем обычный init для экспорта
+    init(id: String, amount: Double, categoryId: String, date: Date, note: String?) {
+        self.id = id
+        self.amount = amount
+        self.categoryId = categoryId
+        self.date = date
+        self.note = note
+    }
+}
+
+struct IncomeBackup: Codable {
+    let id: String
+    let amount: Double
+    let date: Date
+    let note: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, amount, date, note
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        amount = try container.decode(Double.self, forKey: .amount)
+        date = try container.decode(Date.self, forKey: .date)
+        note = try container.decodeIfPresent(String.self, forKey: .note)
+    }
+    
+    init(id: String, amount: Double, date: Date, note: String?) {
+        self.id = id
+        self.amount = amount
+        self.date = date
+        self.note = note
+    }
+}
+
+struct CategoryBackup: Codable {
+    let id: String
+    let name: String
+    let color: String
+    let icon: String
 }

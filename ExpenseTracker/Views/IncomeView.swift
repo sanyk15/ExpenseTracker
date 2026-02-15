@@ -76,7 +76,7 @@ struct IncomeView: View {
             .navigationTitle("Доходы")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                            NavigationLink(destination: SettingsView()) {
+                            NavigationLink(destination: SettingsView(viewModel: viewModel)) {
                                 Image(systemName: "gearshape.fill")
                             }
                         }
