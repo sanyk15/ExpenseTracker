@@ -2,18 +2,34 @@ import SwiftUI
 
 struct CategoryDetailView: View {
     var category: Category
-    var expenses: [Expense]
     var viewModel: ExpenseViewModel
+
+    // Параметры, приходящие из StatsView
+    var initialPeriod: StatsView.TimePeriod
+    var initialStartDate: Date
+    var initialEndDate: Date
     
-    @State private var selectedPeriod: TimePeriod = .thisMonth
-    @State private var startDate = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
-    @State private var endDate = Date()
+    // Локальное состояние
+    @State private var selectedPeriod: StatsView.TimePeriod
+    @State private var startDate: Date
+    @State private var endDate: Date
     
-    enum TimePeriod {
-        case thisWeek
-        case thisMonth
-        case thisYear
-        case custom
+    init(
+        category: Category,
+        viewModel: ExpenseViewModel,
+        initialPeriod: StatsView.TimePeriod,
+        initialStartDate: Date,
+        initialEndDate: Date
+    ) {
+        self.category = category
+        self.viewModel = viewModel
+        self.initialPeriod = initialPeriod
+        self.initialStartDate = initialStartDate
+        self.initialEndDate = initialEndDate
+        
+        _selectedPeriod = State(initialValue: initialPeriod)
+        _startDate = State(initialValue: initialStartDate)
+        _endDate = State(initialValue: initialEndDate)
     }
     
     var body: some View {
@@ -36,19 +52,39 @@ struct CategoryDetailView: View {
                     
                     // Period picker
                     Picker("Период", selection: $selectedPeriod) {
-                        Text("На этой неделе").tag(TimePeriod.thisWeek)
-                        Text("В этом месяце").tag(TimePeriod.thisMonth)
-                        Text("В этом году").tag(TimePeriod.thisYear)
-                        Text("Пользовательский").tag(TimePeriod.custom)
+                        Text("На этой неделе").tag(StatsView.TimePeriod.thisWeek)
+                        Text("В этом месяце").tag(StatsView.TimePeriod.thisMonth)
+                        Text("В этом году").tag(StatsView.TimePeriod.thisYear)
+                        Text("Пользовательский").tag(StatsView.TimePeriod.custom)
                     }
                     .pickerStyle(.segmented)
                     .padding()
                     
                     if selectedPeriod == .custom {
-                        HStack {
-                            DatePicker("От", selection: $startDate, displayedComponents: .date)
-                            DatePicker("До", selection: $endDate, displayedComponents: .date)
+                        HStack(spacing: 24) {
+                            VStack {
+                                Text("От")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                DatePicker("", selection: $startDate, displayedComponents: .date)
+                                    .labelsHidden()
+                                    .environment(\.locale, Locale(identifier: "ru_RU"))
+                            }
+
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.4))
+                                .frame(width: 1, height: 32)
+
+                            VStack {
+                                Text("До")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                DatePicker("", selection: $endDate, displayedComponents: .date)
+                                    .labelsHidden()
+                                    .environment(\.locale, Locale(identifier: "ru_RU"))
+                            }
                         }
+                        .frame(maxWidth: .infinity)
                         .padding()
                     }
                     
@@ -115,24 +151,21 @@ struct CategoryDetailView: View {
     
     private func expensesForPeriod() -> [Expense] {
         let calendar = Calendar.current
-        
+
         switch selectedPeriod {
         case .thisWeek:
             let start = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
             return viewModel.getExpensesForCategoryInPeriod(category: category, from: start, to: Date())
-            
         case .thisMonth:
             let components = calendar.dateComponents([.year, .month], from: Date())
             let start = calendar.date(from: components) ?? Date()
             return viewModel.getExpensesForCategoryInPeriod(category: category, from: start, to: Date())
-            
         case .thisYear:
             var components = calendar.dateComponents([.year], from: Date())
             components.month = 1
             components.day = 1
             let start = calendar.date(from: components) ?? Date()
             return viewModel.getExpensesForCategoryInPeriod(category: category, from: start, to: Date())
-            
         case .custom:
             return viewModel.getExpensesForCategoryInPeriod(category: category, from: startDate, to: endDate)
         }

@@ -33,12 +33,30 @@ struct StatsView: View {
                 .padding()
                 
                 if selectedPeriod == .custom {
-                    HStack {
-                        DatePicker("От", selection: $startDate, displayedComponents: .date)
-                            .environment(\.locale, Locale(identifier: "ru_RU"))
-                        DatePicker("До", selection: $endDate, displayedComponents: .date)
-                            .environment(\.locale, Locale(identifier: "ru_RU"))
+                    HStack(spacing: 24) {
+                        VStack {
+                            Text("От")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            DatePicker("", selection: $startDate, displayedComponents: .date)
+                                .labelsHidden()
+                                .environment(\.locale, Locale(identifier: "ru_RU"))
+                        }
+
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.4))
+                            .frame(width: 1, height: 32)
+
+                        VStack {
+                            Text("До")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            DatePicker("", selection: $endDate, displayedComponents: .date)
+                                .labelsHidden()
+                                .environment(\.locale, Locale(identifier: "ru_RU"))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
                     .padding()
                 }
                 
@@ -112,7 +130,15 @@ struct ExpensesStatsContent: View {
                         let categoryTotal = viewModel.getTotalForPeriod(categoryExpenses)
                         let percentage = (categoryTotal / totalExpense) * 100
                         
-                        NavigationLink(destination: CategoryDetailView(category: category, expenses: categoryExpenses, viewModel: viewModel)) {
+                        NavigationLink(
+                            destination: CategoryDetailView(
+                                category: category,
+                                viewModel: viewModel,
+                                initialPeriod: period,
+                                initialStartDate: startDate,
+                                initialEndDate: endDate
+                            )
+                        ) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {

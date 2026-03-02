@@ -109,7 +109,17 @@ class ExpenseViewModel {
     }
     
     func getExpensesForPeriod(from startDate: Date, to endDate: Date) -> [Expense] {
-        expenses.filter { $0.date >= startDate && $0.date <= endDate }
+        let calendar = Calendar.current
+        
+        let normalizedStart = calendar.startOfDay(for: startDate)
+        
+        guard let normalizedEnd = calendar.date(
+            bySettingHour: 23, minute: 59, second: 59, of: endDate
+        ) else {
+            return []
+        }
+        
+        return expenses.filter { $0.date >= normalizedStart && $0.date <= normalizedEnd }
     }
     
     func getCategoryStatistics(for expenses: [Expense]) -> [CategoryStatistics] {
@@ -284,7 +294,16 @@ class ExpenseViewModel {
     }
 
     func getIncomesForPeriod(from startDate: Date, to endDate: Date) -> [Income] {
-        incomes.filter { $0.date >= startDate && $0.date <= endDate }
+        let calendar = Calendar.current
+        
+        let normalizedStart = calendar.startOfDay(for: startDate)
+        guard let normalizedEnd = calendar.date(
+            bySettingHour: 23, minute: 59, second: 59, of: endDate
+        ) else {
+            return []
+        }
+        
+        return incomes.filter { $0.date >= normalizedStart && $0.date <= normalizedEnd }
     }
 
     func getTotalIncomeForPeriod(_ incomes: [Income]) -> Double {
