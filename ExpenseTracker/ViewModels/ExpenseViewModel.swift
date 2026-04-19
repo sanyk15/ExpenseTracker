@@ -10,12 +10,14 @@ class ExpenseViewModel {
     var incomes: [Income] = []
     var isLoading = false
     var errorMessage: String?
+    var budgets: [CategoryBudget] = []
     
     // MARK: - Init
     init() {
         loadCategories()
         loadExpenses()
         loadIncomes()
+        loadBudgets()
     }
     
     // MARK: - Categories Management
@@ -496,6 +498,53 @@ class ExpenseViewModel {
             NSLog("   Детали: \(error)")
             return false
         }
+    }
+    
+    func loadBudgets() {
+        if let saved = UserDefaults.standard.data(forKey: "budgets"),
+           let decoded = try? JSONDecoder().decode([CategoryBudget].self, from: saved) {
+            self.budgets = decoded
+        }
+    }
+
+    func saveBudgets() {
+        if let encoded = try? JSONEncoder().encode(budgets) {
+            UserDefaults.standard.set(encoded, forKey: "budgets")
+        }
+    }
+
+    func getBudget(categoryId: UUID, year: Int, month: Int) -> CategoryBudget? {
+        budgets.first {
+            $0.categoryId == categoryId && $0.year == year && $0.month == month
+        }
+    }
+
+    func setBudget(categoryId: UUID, year: Int, month: Int, limit: Double) {
+        if let index = budgets.firstIndex(where: {
+            $0.categoryId == categoryId && $0.year == year && $0.month == month
+        }) {
+            budgets[index].limit = limit
+        } else {
+            let budget = CategoryBudget(categoryId: categoryId, year: year, month: month, limit: limit)
+            budgets.append(budget)
+        }
+        saveBudgets()
+    }
+
+    func getExpensesForCategoryInMonth(category: Category, year: Int, month: Int) -> [Expense] {
+        let calendar = Calendar.current
+        return expenses.filter { expense in
+            let y = calendar.component(.year, from: expense.date)
+            let m = calendar.component(.month, from: expense.date)
+            return expense.category.id == category.id && y == year && m == month
+        }
+    }
+    
+    func deleteBudget(categoryId: UUID, year: Int, month: Int) {
+        budgets.removeAll {
+            $0.categoryId == categoryId && $0.year == year && $0.month == month
+        }
+        saveBudgets()
     }
 }
 

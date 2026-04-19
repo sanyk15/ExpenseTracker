@@ -118,7 +118,13 @@ struct ContentView: View {
                     Label("Статистика", systemImage: "chart.bar")
                 }
             
-            // Tab 4: Categories
+            // Tab 4: Limits
+            BudgetView(viewModel: viewModel)
+                .tabItem {
+                    Label("Лимиты", systemImage: "gauge.with.dots.needle.33percent")
+                }
+            
+            // Tab 5: Categories
             CategoriesView(viewModel: viewModel)
                 .tabItem {
                     Label("Категории", systemImage: "list.bullet")

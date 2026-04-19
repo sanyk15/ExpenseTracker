@@ -78,6 +78,13 @@ struct StatsView: View {
             }
             .navigationTitle("Статистика")
             .preferredColorScheme(.light)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                            NavigationLink(destination: SettingsView(viewModel: viewModel)) {
+                                Image(systemName: "gearshape.fill")
+                            }
+                        }
+            }
         }
     }
 }
@@ -129,45 +136,111 @@ struct ExpensesStatsContent: View {
                     if let category = categoryExpenses.first?.category {
                         let categoryTotal = viewModel.getTotalForPeriod(categoryExpenses)
                         let percentage = (categoryTotal / totalExpense) * 100
-                        
-                        NavigationLink(
-                            destination: CategoryDetailView(
-                                category: category,
-                                viewModel: viewModel,
-                                initialPeriod: period,
-                                initialStartDate: startDate,
-                                initialEndDate: endDate
-                            )
-                        ) {
+
+                        // Лимит — показываем только для текущего месяца
+                        let calendar = Calendar.current
+                        let nowYear = calendar.component(.year, from: Date())
+                        let nowMonth = calendar.component(.month, from: Date())
+
+                        // Проверяем что выбран текущий месяц
+                        let isCurrentMonth: Bool = {
+                            switch period {
+                            case .thisMonth:
+                                return true
+                            case .custom:
+                                let startYear = calendar.component(.year, from: startDate)
+                                let startMonth = calendar.component(.month, from: startDate)
+                                let endYear = calendar.component(.year, from: endDate)
+                                let endMonth = calendar.component(.month, from: endDate)
+                                return startYear == nowYear && startMonth == nowMonth
+                                    && endYear == nowYear && endMonth == nowMonth
+                            default:
+                                return false
+                            }
+                        }()
+
+                        let budget = isCurrentMonth
+                            ? viewModel.getBudget(categoryId: category.id, year: nowYear, month: nowMonth)
+                            : nil
+                        let limit = budget?.limit ?? 0
+                        let spentThisMonth = isCurrentMonth
+                            ? viewModel.getExpensesForCategoryInMonth(
+                                category: category, year: nowYear, month: nowMonth
+                            ).reduce(0) { $0 + $1.amount }
+                            : 0
+                        let isOverLimit = limit > 0 && spentThisMonth > limit
+
+                        NavigationLink(destination: CategoryDetailView(
+                            category: category,
+                            viewModel: viewModel,
+                            initialPeriod: period,
+                            initialStartDate: startDate,
+                            initialEndDate: endDate
+                        )) {
                             HStack {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: 6) {
                                     HStack {
-                                        Text(category.icon)
-                                            .font(.title3)
-                                        Text(category.name)
-                                            .font(.body)
+                                        Text(category.icon).font(.title3)
+                                        Text(category.name).font(.body)
                                     }
-                                    
+
+                                    // Прогресс-бар с засечкой лимита
                                     GeometryReader { geometry in
                                         ZStack(alignment: .leading) {
+                                            // Фон
                                             RoundedRectangle(cornerRadius: 4)
                                                 .fill(Color.gray.opacity(0.2))
-                                            
+
+                                            // Заполнение — тоже скруглённый прямоугольник
                                             RoundedRectangle(cornerRadius: 4)
-                                                .fill(Color.red.opacity(0.7))
+                                                .fill(isOverLimit ? Color.red.opacity(0.8) : Color.red.opacity(0.7))
                                                 .frame(width: geometry.size.width * CGFloat(percentage / 100))
                                         }
+                                        .frame(height: 8)
+                                        // Засечка выносится в overlay — она не обрезается clipShape
+                                        .overlay(alignment: .leading) {
+                                            if isCurrentMonth && limit > 0 {
+                                                let limitRatio = min(CGFloat(limit / (totalExpense > 0 ? totalExpense : 1)), 1.0)
+                                                let limitX = geometry.size.width * limitRatio
+
+                                                ZStack(alignment: .bottom) {
+                                                    // Треугольник сверху
+                                                    Triangle()
+                                                        .fill(Color(white: 0.35))
+                                                        .frame(width: 8, height: 5)
+                                                        .offset(y: -9)
+
+                                                    // Вертикальная линия-засечка
+                                                    Rectangle()
+                                                        .fill(Color(white: 0.35))
+                                                        .frame(width: 2, height: 14)
+                                                        .offset(y: 3)
+                                                }
+                                                .offset(x: limitX - 4)
+                                            }
+                                        }
                                     }
-                                    .frame(height: 8)
+                                    .frame(height: 16)
+
+                                    // Подпись лимита
+                                    if isCurrentMonth && limit > 0 {
+                                        HStack {
+                                            Text(isOverLimit ? "⚠️ Лимит превышен" : "Лимит: \(String(format: "%.0f ₽", limit))")
+                                                .font(.caption)
+                                                .foregroundColor(isOverLimit ? .red : .orange)
+                                            Spacer()
+                                            Text("\(String(format: "%.0f", spentThisMonth)) / \(String(format: "%.0f ₽", limit))")
+                                                .font(.caption)
+                                                .foregroundColor(isOverLimit ? .red : .gray)
+                                        }
+                                    }
                                 }
-                                
+
                                 VStack(alignment: .trailing) {
                                     Text(String(format: "%.2f ₽", categoryTotal))
-                                        .font(.body)
-                                        .fontWeight(.semibold)
+                                        .font(.body).fontWeight(.semibold)
                                     Text(String(format: "%.1f%%", percentage))
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
+                                        .font(.caption).foregroundColor(.gray)
                                 }
                             }
                             .foregroundColor(.primary)
@@ -460,5 +533,17 @@ struct BarChart: View {
         .padding()
         .background(Color.gray.opacity(0.05))
         .cornerRadius(8)
+    }
+}
+
+// TRIANGLE: - Triangle
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
     }
 }
