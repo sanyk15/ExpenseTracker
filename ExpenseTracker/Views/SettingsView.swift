@@ -15,6 +15,12 @@ struct SettingsView: View {
     @State private var exportURL: URL?
     @State private var isExporting = false
     @State private var isImporting = false
+    @State private var reminderTimeId: UUID = UUID()
+    @State private var reminderEnabled: Bool = false
+    @State private var reminderTime: Date = Calendar.current.date(
+        bySettingHour: 21, minute: 0, second: 0, of: Date()
+    ) ?? Date()
+    @State private var notificationPermissionDenied: Bool = false
     
     var body: some View {
         NavigationStack {
@@ -102,6 +108,64 @@ struct SettingsView: View {
                             .foregroundColor(.gray)
                     }
                 }
+                
+                // MARK: - Уведомления
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Напоминания")
+                            .font(.headline)
+
+                        if notificationPermissionDenied {
+                            HStack(spacing: 8) {
+                                Image(systemName: "bell.slash.fill")
+                                    .foregroundColor(.orange)
+                                Text("Разрешите уведомления в Настройках iPhone")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+
+                        Toggle("Напоминать вносить траты", isOn: $reminderEnabled)
+                            .onChange(of: reminderEnabled) { enabled in
+                                if enabled {
+                                    NotificationManager.shared.requestPermission { granted in
+                                        if granted {
+                                            let hour = Calendar.current.component(.hour, from: reminderTime)
+                                            let minute = Calendar.current.component(.minute, from: reminderTime)
+                                            NotificationManager.shared.scheduleDailyReminder(hour: hour, minute: minute)
+                                            UserDefaults.standard.set(true, forKey: "reminderEnabled")
+                                            notificationPermissionDenied = false
+                                        } else {
+                                            reminderEnabled = false
+                                            notificationPermissionDenied = true
+                                        }
+                                    }
+                                } else {
+                                    NotificationManager.shared.cancelDailyReminder()
+                                    UserDefaults.standard.set(false, forKey: "reminderEnabled")
+                                }
+                            }
+                        // Пикер ВНУТРИ того же VStack
+                        if reminderEnabled {
+                            HStack {
+                                Text("Время напоминания")
+                                    .foregroundColor(.gray)
+                                Spacer()
+                                DatePicker("", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                                    .id(reminderTimeId)
+                                    .labelsHidden()
+                                    .onChange(of: reminderTime) { newTime in
+                                        let hour = Calendar.current.component(.hour, from: newTime)
+                                        let minute = Calendar.current.component(.minute, from: newTime)
+                                        UserDefaults.standard.set(hour, forKey: "reminderHour")
+                                        UserDefaults.standard.set(minute, forKey: "reminderMinute")
+                                        NotificationManager.shared.scheduleDailyReminder(hour: hour, minute: minute)
+                                    }
+                                }
+                            }
+                    }
+                    .padding(.vertical, 4)
+                }
             }
             .navigationTitle("Настройки")
             .navigationBarTitleDisplayMode(.inline)
@@ -138,6 +202,22 @@ struct SettingsView: View {
         }
         .onAppear {
             isDarkMode = UserDefaults.standard.bool(forKey: "isDarkMode")
+            reminderEnabled = UserDefaults.standard.bool(forKey: "reminderEnabled")
+            NotificationManager.shared.checkPermissionStatus { status in
+                notificationPermissionDenied = (status == .denied)
+            }
+
+            if UserDefaults.standard.object(forKey: "reminderHour") != nil {
+                let hour = UserDefaults.standard.integer(forKey: "reminderHour")
+                let minute = UserDefaults.standard.integer(forKey: "reminderMinute")
+                var components = DateComponents()
+                components.hour = hour
+                components.minute = minute
+                if let date = Calendar.current.date(from: components) {
+                    reminderTime = date
+                    reminderTimeId = UUID()
+                }
+            }
         }
     }
     
